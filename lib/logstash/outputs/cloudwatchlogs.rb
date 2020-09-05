@@ -95,12 +95,13 @@ class LogStash::Outputs::CloudWatchLogs < LogStash::Outputs::Base
       @logger.warn(":buffer_duration is smaller than the min value. Use #{MIN_BUFFER_DURATION} instead.")
       @buffer_duration = MIN_BUFFER_DURATION
     end
+
     @sequence_token = nil
     @last_flush = Time.now.to_f
     @buffer = Buffer.new(
       max_batch_count: batch_count, max_batch_size: batch_size,
       buffer_duration: @buffer_duration, out_queue_size: @queue_size, logger: @logger,
-      size_of_item_proc: Proc.new {|event| event[:message].bytesize + PER_EVENT_OVERHEAD})
+      size_of_item_proc: Proc.new {|event| :message.to_s.bytesize + PER_EVENT_OVERHEAD})
     @publisher = Thread.new do
       @buffer.deq do |batch|
         flush(batch)
@@ -145,7 +146,7 @@ class LogStash::Outputs::CloudWatchLogs < LogStash::Outputs::Base
       @codec.encode(event)
     else
       @buffer.enq({:timestamp => event.timestamp.time.to_f*1000,
-       :message => event[MESSAGE] })
+       :message => event.get(MESSAGE) })
     end
   end # def receive
 
@@ -161,6 +162,13 @@ class LogStash::Outputs::CloudWatchLogs < LogStash::Outputs::Base
   def flush(events)
     return if events.nil? or events.empty?
     log_event_batches = prepare_log_events(events)
+	
+	# Support getting dynamic log group namespace
+	# TODO
+	# 1. Get a list of unique log groups
+	# 2. For each log group gets its batch
+	# 3. Run its batch upload
+	
     log_event_batches.each do |log_events|
       put_log_events(log_events)
     end
@@ -174,6 +182,7 @@ class LogStash::Outputs::CloudWatchLogs < LogStash::Outputs::Base
     sleep(delay) if delay > 0
     backoff = 1
     begin
+	  
       @logger.info("Sending #{log_events.size} events to #{@log_group_name}/#{@log_stream_name}")
       @last_flush = Time.now.to_f
       if @dry_run
@@ -246,7 +255,7 @@ class LogStash::Outputs::CloudWatchLogs < LogStash::Outputs::Base
 
   private
   def invalid?(event)
-    status = event[TIMESTAMP].nil? || (!@use_codec && event[MESSAGE].nil?)
+    status = event.get(TIMESTAMP).nil? || (!@use_codec && event.get(MESSAGE).nil?)
     if status
       @logger.warn("Skipping invalid event #{event.to_hash}")
     end
