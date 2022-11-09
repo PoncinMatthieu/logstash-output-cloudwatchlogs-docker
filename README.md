@@ -146,6 +146,7 @@ cloudwatchlogs {
 
 Cloudwatch log streams can only be received from a single source.
 So if you have multiple instances of logstash, you'll need to add a certain index to the log stream name.
+But do not worry, this is how cloudwatch logs are meant to be used, log streams can be aggregated later on.
 
 If you use kubernetes, a good option is to use the pod name,
 so you could add the POD_NAME as a environment variable to the container as explained [here](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/).
