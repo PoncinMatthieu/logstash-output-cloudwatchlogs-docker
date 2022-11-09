@@ -141,6 +141,30 @@ cloudwatchlogs {
   "dry_run" => false
 }
 ```
+
+## Using within Kubernetes and with a scaling fleet of logstash instances
+
+Cloudwatch log streams can only be received from a single source.
+So if you have multiple instances of logstash, you'll need to add a certain index to the log stream name.
+
+If you use kubernetes, a good option is to use the pod name,
+so you could add the POD_NAME as a environment variable to the container as explained [here](https://kubernetes.io/docs/tasks/inject-data-application/environment-variable-expose-pod-information/).
+Then specify the pod name in the output, for example like this:
+```
+output {
+  cloudwatchlogs {
+    "log_group_name" => "app1"
+    "log_stream_name" => "${POD_NAME}"
+  }
+}
+```
+
+A docker file is available to build a logstash container together with this plugin.
+Simply run the following to build a new container:
+```
+docker build -f Dockerfile-logstash -t logstash .
+```
+
 ## Contributing
 
 1. Fork it
